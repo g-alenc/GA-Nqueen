@@ -8,11 +8,10 @@
 class GeneticAlgorithm{
     private:
         void mutation(Individual& individual);
-        pair<Individual, Individual> select_parents();
+        Individual& tournament_selection(int tournament_size);
         Population new_population();
         void evaluate_all_fitness();
-        vector<int> calculate_sort_indices();
-        pair<Individual, Individual> crossover(const Individual& father, const Individual& mother);
+        pair<Individual, Individual>crossover(const Individual& father, const Individual& mother);
         int elitism_length;
 
     public: 
@@ -20,10 +19,10 @@ class GeneticAlgorithm{
         double mutation_rate;
         int population_size;
         int elitism_rate;
-        vector<int> sorted_indices;
+        Individual best_solution;
 
         GeneticAlgorithm( int chromosome_size, int population_size, double mutation_rate, double elitism_rate);
-        void run(int generations);
+        void run(int generations, bool verbose);
 };
 
 #endif

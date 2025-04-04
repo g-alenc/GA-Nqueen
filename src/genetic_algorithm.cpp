@@ -3,15 +3,30 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 using namespace::std;
 
 GeneticAlgorithm::GeneticAlgorithm(int chromosome_size, int pop_size, double mutation_rate, double elitism_rate)
-    : population(pop_size, chromosome_size), mutation_rate(mutation_rate),  population_size(pop_size), elitism_rate(elitism_rate),
-    elitism_length(round(population_size*elitism_rate)) {}
+    : mutation_rate(mutation_rate),
+      population_size(pop_size),
+      elitism_rate(elitism_rate),
+      elitism_length(round(pop_size * elitism_rate)),
+      population(pop_size, chromosome_size)
+{}
 
 void GeneticAlgorithm::mutation(Individual& individual){
-    // Change the position of a queen from a random column
-    individual.chromosome[randint(0, individual.chromosome_size_)] = randint(0, individual.chromosome_size_);
+    // Change the position of n queens from  random columns
+    // Seleciona duas colunas diferentes aleatoriamente
+
+    int i = randint(0, individual.chromosome_size_ - 1);
+    int j = randint(0, individual.chromosome_size_ - 1);
+    while (i == j) {
+        j = randint(0, individual.chromosome_size_ - 1);
+    }
+
+    // Troca as posições das rainhas entre essas colunas
+    std::swap(individual.chromosome[i], individual.chromosome[j]);
+    // individual.chromosome[randint(0, individual.chromosome_size_ - 1)] = randint(1, individual.chromosome_size_ - 1);
 }
 
 pair<Individual, Individual> GeneticAlgorithm::crossover(const Individual& father, const Individual& mother){
@@ -35,68 +50,67 @@ pair<Individual, Individual> GeneticAlgorithm::crossover(const Individual& fathe
 }
 
 void GeneticAlgorithm::evaluate_all_fitness(){
+    population.mean_fitness = 0.0;
     for (int i = 0; i < population_size; i++){
         population.individuals[i].evaluate_fitness();
         population.mean_fitness += population.individuals[i].fitness;
     }
     population.mean_fitness /= population_size;
 }
-
-pair<Individual, Individual> GeneticAlgorithm::select_parents(){
-    sorted_indices = calculate_sort_indices();
-    return make_pair(population.individuals[sorted_indices[0]], population.individuals[sorted_indices[1]]);
-
-}
-
-vector<int> GeneticAlgorithm::calculate_sort_indices(){
-    vector<int> indices(population_size);
-
-    for (int i = 0; i < population_size; ++i) {
-        indices[i] = i;
-    }
-
-    for (int i = 0; i < population_size - 1; ++i) {
-        int maxIdx = i;
-        for (int j = i + 1; j < population_size; ++j) {
-            if (population.individuals[indices[j]].fitness > population.individuals[indices[maxIdx]].fitness) {
-                maxIdx = j;
-            }
+Individual& GeneticAlgorithm::tournament_selection(int tournament_size = 5) {
+    int best = randint(0, population_size - 1);
+    for (int i = 1; i < tournament_size; ++i) {
+        int competitor = randint(0, population_size - 1);
+        if (population.individuals[competitor].fitness < population.individuals[best].fitness) {
+            best = competitor;
         }
-        // Troca os índices
-        swap(indices[i], indices[maxIdx]);
     }
-
-    return indices;  // Retorna os índices ordenados
+    return population.individuals[best];
 }
 
 Population GeneticAlgorithm::new_population(){
     Population new_population = Population(population_size, population.individuals[0].chromosome_size_);
 
     for (int i= 0; i < elitism_length; i++){
-        new_population.individuals[i] = population.individuals[sorted_indices[i]];
+        new_population.individuals[i] = population.individuals[population.sorted_indices[i]];
     }
 
-    for (int i = elitism_length; i < (population_size/2); i++){
+    for (int i = elitism_length; i < population_size; i += 2){
 
-        auto parents = select_parents(); 
-        auto sons = crossover(parents.first, parents.second);
+        Individual father = tournament_selection(8); 
+        Individual mother = tournament_selection(8); 
+
+        auto sons = crossover(father, mother);
         mutation(sons.first);
         mutation(sons.second);
 
-        new_population.individuals[i] = sons.first;
-        new_population.individuals[i+(population_size/2)] = sons.first;
+        if (i < population_size) {
+            new_population.individuals[i] = sons.first;
+        }
+        if (i + 1 < population_size) {
+            new_population.individuals[i + 1] = sons.second;
+        }
     }
     return new_population;
 }
 
-void GeneticAlgorithm::run(int generations){
-    for (int g = 0; g < generations; g++){
+void GeneticAlgorithm::run(int generations, bool verbose){
+    for (int g = 1; g < generations+1; g++){
         evaluate_all_fitness();
+        population.calculate_sort_indices();
+        best_solution = population.individuals[population.sorted_indices[0]];
+        
 
+        if (verbose){
         cout << "Generation:" << g << "\n";
         cout << "Mean fitness:" << population.mean_fitness << "\n";
+        cout << "Best fitness:" << best_solution.fitness << "\n";
         cout << "---------------------\n";
 
+        if (best_solution.fitness == 0){
+            break;
+        }
+}
         population = new_population();
     }
 }

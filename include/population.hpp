@@ -11,8 +11,10 @@ class Population{
         vector<Individual> individuals;
         int population_size_;
         double mean_fitness = 0.0;
+        vector<int> sorted_indices;
 
         Population(int population_size, int chromosome_size);
+        void calculate_sort_indices();
 
 };
 
